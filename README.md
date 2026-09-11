@@ -2,9 +2,9 @@
 
 ## 📖 Sobre o Projeto
 
-O **Catálogo de Livros** é uma aplicação web desenvolvida para facilitar o gerenciamento, organização e controle de acervos bibliográficos. O sistema permite cadastrar novos títulos, editar informações existentes, remover registros obsoletos e realizar consultas dinâmicas em tempo real, além de fornecer identificação visual imediata sobre o estado de cada exemplar.
+O **Catálogo de Livros** é uma aplicação web para gerenciamento de acervos bibliográficos, com um painel de estatísticas, cadastro de novos títulos, edição em linha, exclusão com confirmação e busca em tempo real por título, autor ou categoria.
 
-O projeto foi construído com foco em boas práticas de componentização e reatividade, utilizando a **Composition API** do Vue.js 3 com a sintaxe `<script setup>`, proporcionando uma estrutura de código limpa, modular e de alto desempenho sobre o ferramental do Vite.
+O projeto foi construído com a **Composition API** do Vue.js 3 (`<script setup>`) sobre o Vite, seguindo um layout em duas colunas: uma barra lateral fixa para cadastro e uma área principal com indicadores, busca e a grade de livros. Os dados do acervo são persistidos no **localStorage** do navegador, então o catálogo permanece salvo entre sessões.
 
 ---
 
@@ -14,20 +14,26 @@ O projeto foi construído com foco em boas práticas de componentização e reat
 - **Vite:** Ferramenta de build e servidor de desenvolvimento de alta performance.
 - **JavaScript (ES6+):** Linguagem utilizada na implementação da lógica e manipulação de estados.
 - **Composition API (`<script setup>`):** Paradigma moderno de organização e reutilização de lógica no Vue 3.
-- **CSS3:** Estilização componentizada com suporte a layouts modernos e responsivos.
+- **Web Storage API (`localStorage`):** Persistência do catálogo entre sessões, sem necessidade de backend.
+- **CSS3:** Grid e Flexbox para um layout responsivo, com transições animadas na listagem.
 
 ---
 
 ## ✨ Funcionalidades
 
-- **Cadastro de Livros:** Formulário dedicado para inserção de títulos com campos para título, autor, categoria e status inicial.
-- **Busca em Tempo Real:** Filtragem dinâmica que pesquisa simultaneamente por título e nome do autor à medida que o usuário digita.
-- **Edição em Linha:** Alteração direta das propriedades do livro (dados e disponibilidade) sem recarregar a interface.
-- **Exclusão com Confirmação:** Remoção segura de registros com solicitação de confirmação para evitar perdas acidentais.
-- **Indicadores Visuais de Status:** Identificação por tags coloridas para monitoramento rápido:
+- **Painel de Estatísticas:** Cartões no topo mostram o total de exemplares e a contagem por status (Disponíveis, Emprestados, Reservados), atualizados automaticamente conforme o acervo muda.
+- **Cadastro de Livros:** Formulário na barra lateral para inserção de título, autor, categoria, quantidade de exemplares, status inicial e URL de capa (opcional).
+- **Capas com Fallback:** Quando nenhuma URL de capa é informada, uma capa placeholder é gerada automaticamente com uma cor associada à categoria do livro.
+- **Busca em Tempo Real:** Filtragem dinâmica que pesquisa simultaneamente por título, autor e categoria à medida que o usuário digita, com contador de resultados.
+- **Edição em Linha:** Alteração direta dos dados do livro (título, autor, categoria, quantidade, status e capa) sem sair do card nem recarregar a página.
+- **Exclusão com Confirmação:** Remoção segura de registros com `confirm()` do navegador para evitar exclusões acidentais.
+- **Persistência Local:** O catálogo é salvo automaticamente no `localStorage` a cada alteração, via `watch` reativo.
+- **Animações de Lista:** Uso de `TransitionGroup` para animar a entrada e saída de cards ao adicionar, filtrar ou remover livros.
+- **Indicadores Visuais de Status:** Identificação por tags coloridas:
   - `Disponível` (Verde)
   - `Emprestado` (Vermelho)
   - `Reservado` (Amarelo)
+- **Layout Responsivo:** A barra lateral e a grade de cards se reorganizam automaticamente em telas menores.
 
 ---
 
@@ -52,13 +58,13 @@ npm -v
 1. **Clone o repositório:**
 
 ```bash
-git clone https://github.com/joaodanilaitsbrito/catalogo-vue.git
+git clone https://github.com/joaodanilaitsbrito/atividade_web2.git
 ```
 
 2. **Acesse a pasta do projeto:**
 
 ```bash
-cd catalogo-vue
+cd atividade_web2
 ```
 
 3. **Instale as dependências:**
@@ -85,74 +91,98 @@ http://localhost:5173
 
 ## 📖 Estrutura de Componentes
 
-A interface foi estruturada de forma modular, delegando responsabilidades específicas para cada componente:
-
 ```
 src/
+├── assets/
+│   ├── hero.png
+│   ├── vite.svg
+│   └── vue.svg
+│
 ├── components/
-│   ├── AddForm.vue       # Formulário para inclusão de novos livros
-│   ├── Card.vue          # Cartão com exibição, edição e exclusão de cada exemplar
-│   └── SearchBar.vue     # Campo de busca e filtragem reativa
+│   ├── AddForm.vue       # Formulário de cadastro exibido na barra lateral
+│   ├── Card.vue          # Card do livro: exibição, edição em linha e exclusão
+│   ├── Header.vue        # Cabeçalho fixo com marca e navegação
+│   ├── SearchBar.vue     # Formulário de busca/cadastro reutilizável
+│   └── Stats.vue         # Cartões de estatísticas do acervo
 │
 ├── App.vue               # Componente central, estado global e regras de negócio
 ├── main.js               # Ponto de inicialização da aplicação Vue
-└── style.css              # Folha de estilos globais
+└── style.css              # Estilos globais e fonte importada
 ```
+
+> **Nota:** `Header.vue`, `Stats.vue` e `SearchBar.vue` existem como componentes isolados e reutilizáveis, mas atualmente o `App.vue` implementa o cabeçalho, o painel de estatísticas e o cadastro diretamente em seu próprio template/estilo — eles ficam disponíveis para uma futura extração dessa lógica.
 
 ### Detalhamento dos Componentes
 
-- **App.vue:** Concentra o estado principal da aplicação (array de livros e termo de pesquisa), além das funções de manipulação (adicionar, editar, excluir).
+- **App.vue:** Concentra o estado principal da aplicação (lista de livros e termo de busca), calcula as estatísticas e os resultados filtrados via `computed`, define as funções de manipulação (`addItem`, `updateItem`, `deleteItem`) e sincroniza o acervo com o `localStorage`.
 
-- **AddForm.vue:** Formulário controlado que coleta os dados do novo livro e dispara um evento com o novo objeto para inclusão.
+- **AddForm.vue:** Formulário controlado que coleta título, autor, categoria, quantidade, status e capa do novo livro, e emite o evento `add` com o objeto pronto para inclusão.
 
-- **Card.vue:** Apresenta os detalhes do livro, gerencia o estado interno de edição em linha e solicita exclusões via emissão de eventos.
+- **Card.vue:** Apresenta a capa (com fallback gerado por categoria), os detalhes do livro e a badge de status; alterna entre modo de exibição e edição em linha; emite `update` ao salvar e `delete` (com confirmação) ao remover.
 
-- **SearchBar.vue:** Input de busca controlado que emite atualizações para sincronizar o filtro no componente pai.
+- **Header.vue:** Cabeçalho fixo com a marca do sistema e links de navegação (componente independente, não conectado ao `App.vue` no momento).
+
+- **Stats.vue:** Recebe totais via props e renderiza os cartões de estatística (componente independente, não conectado ao `App.vue` no momento).
+
+- **SearchBar.vue:** Versão alternativa de formulário de cadastro/busca (componente independente, não conectado ao `App.vue` no momento).
 
 ---
 
 ## ⚡ Gerenciamento de Estado
 
-O gerenciamento de dados utiliza a reatividade nativa da Composition API por meio de `ref` e propriedades computadas com `computed`.
+O gerenciamento de dados utiliza a reatividade nativa da Composition API por meio de `ref`, `computed` e `watch`, com persistência automática no `localStorage`.
 
-A lista de livros e o termo de pesquisa são definidos como variáveis reativas:
+A lista de livros é inicializada a partir do que já estiver salvo no navegador, com um catálogo padrão como fallback:
 
 ```javascript
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
-const busca = ref('')
+const defaultItems = [
+  { id: 1, title: 'O Senhor dos Anéis', category: 'Fantasia', author: 'J.R.R. Tolkien', status: 'Disponível', cover: '', quantity: 1 },
+  { id: 2, title: '1984', category: 'Distopia', author: 'George Orwell', status: 'Emprestado', cover: '', quantity: 2 },
+  // ...
+]
 
-const livros = ref([
-  {
-    id: 1,
-    titulo: 'Dom Casmurro',
-    autor: 'Machado de Assis',
-    categoria: 'Romance',
-    status: 'Disponível'
-  },
-  {
-    id: 2,
-    titulo: 'O Hobbit',
-    autor: 'J.R.R. Tolkien',
-    categoria: 'Fantasia',
-    status: 'Emprestado'
-  }
-])
+const saved = localStorage.getItem('catalogo-livros-sidebar')
+const items = ref(saved ? JSON.parse(saved) : defaultItems)
+
+const searchTerm = ref('')
 ```
 
-A filtragem dos registros exibidos é realizada de maneira reativa:
+As estatísticas do acervo são derivadas automaticamente da lista de livros:
 
 ```javascript
-const livrosFiltrados = computed(() => {
-  const termo = busca.value.toLowerCase().trim()
-  if (!termo) return livros.value
+const stats = computed(() => {
+  const total = items.value.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)
+  return {
+    total,
+    disponivel: items.value.filter(i => i.status === 'Disponível').length,
+    emprestado: items.value.filter(i => i.status === 'Emprestado').length,
+    reservado: items.value.filter(i => i.status === 'Reservado').length
+  }
+})
+```
 
-  return livros.value.filter(
-    (livro) =>
-      livro.titulo.toLowerCase().includes(termo) ||
-      livro.autor.toLowerCase().includes(termo)
+A filtragem dos registros exibidos considera título, autor e categoria:
+
+```javascript
+const filteredItems = computed(() => {
+  const term = searchTerm.value.toLowerCase().trim()
+  if (!term) return items.value
+  return items.value.filter(item =>
+    item.title.toLowerCase().includes(term) ||
+    item.author.toLowerCase().includes(term) ||
+    item.category.toLowerCase().includes(term)
   )
 })
+```
+
+Toda alteração no acervo é persistida automaticamente:
+
+```javascript
+watch(items, (newItems) => {
+  localStorage.setItem('catalogo-livros-sidebar', JSON.stringify(newItems))
+}, { deep: true })
 ```
 
 ---
@@ -164,22 +194,29 @@ A troca de informações entre componentes segue o fluxo unidirecional de dados 
 - **Envio de dados do pai para o filho via Props:**
 
 ```vue
+<AddForm @add="addItem" :status-options="statusOptions" />
+
 <Card
-  v-for="livro in livrosFiltrados"
-  :key="livro.id"
-  :livro="livro"
+  v-for="item in filteredItems"
+  :key="item.id"
+  :item="item"
+  :status-options="statusOptions"
+  @update="updateItem"
+  @delete="deleteItem"
 />
 ```
 
 - **Notificação do filho para o pai via Emissão de Eventos (emit):**
 
-```vue
-<AddForm @add-livro="adicionarLivro" />
-<SearchBar @update:busca="busca = $event" />
-<Card
-  @updatelivro="atualizarLivro"
-  @delete-livro="excluirLivro"
-/>
+```javascript
+// AddForm.vue
+const emit = defineEmits(['add'])
+emit('add', { ...form, quantity: Number(form.quantity) || 1 })
+
+// Card.vue
+const emit = defineEmits(['update', 'delete'])
+emit('update', { ...editForm, quantity: Number(editForm.quantity) || 1 })
+emit('delete', props.item.id)
 ```
 
 ---
@@ -188,9 +225,11 @@ A troca de informações entre componentes segue o fluxo unidirecional de dados 
 
 O design foi estruturado para fornecer uma experiência de uso intuitiva e visualmente equilibrada:
 
-- Disposição em **CSS Grid** e **Flexbox** para adaptação automática a diferentes resoluções.
-- Cards informativos com contraste visual bem definido.
-- Feedback imediato de preenchimento e busca sem travamentos na interface.
+- Layout em **CSS Grid** de duas colunas (barra lateral fixa + conteúdo principal), que colapsa em coluna única em telas menores.
+- Painel de estatísticas com cartões que destacam contagens por status através de cores.
+- Cards de livro com **capa em destaque**, badge de status e ações de editar/excluir sempre visíveis.
+- Transições suaves (`TransitionGroup`) ao adicionar, filtrar ou remover itens da grade.
+- Estado vazio dedicado quando a busca não retorna nenhum resultado.
 
 ---
 
@@ -200,16 +239,18 @@ Durante o ciclo de desenvolvimento do projeto, foram consolidados os seguintes c
 
 - Configuração de ambiente moderno de desenvolvimento front-end com **Vite** e **Vue 3**.
 - Aplicação prática da **Composition API** utilizando a sintaxe simplificada `<script setup>`.
+- Persistência de estado no navegador com `localStorage` combinada a `watch` reativo.
 - Separação da interface em componentes reutilizáveis e desacoplados.
 - Domínio do fluxo de dados através de **Props** e **Custom Events**.
-- Utilização de **Computed Properties** para filtros dinâmicos de alta performance.
+- Utilização de **Computed Properties** para estatísticas e filtros dinâmicos de alta performance.
+- Uso de `TransitionGroup` para animações de entrada/saída em listas reativas.
 - Práticas de versionamento de código com **Git** e hospedagem no **GitHub**.
 
 ---
 
 ## 🎓 Conclusão
 
-O projeto consolida os fundamentos essenciais do ecossistema Vue.js aplicados ao desenvolvimento front-end. A aplicação demonstra com clareza o ciclo de vida dos dados em um ambiente reativo, oferecendo operações completas de manipulação de dados na interface, comunicação sólida entre componentes e uma experiência de uso fluida.
+O projeto consolida os fundamentos essenciais do ecossistema Vue.js aplicados ao desenvolvimento front-end, evoluindo a versão anterior com um painel de estatísticas, persistência local de dados e uma interface em duas colunas. A aplicação demonstra com clareza o ciclo de vida dos dados em um ambiente reativo, oferecendo operações completas de manipulação de dados na interface, comunicação sólida entre componentes e uma experiência de uso fluida.
 
 ---
 
@@ -218,4 +259,4 @@ O projeto consolida os fundamentos essenciais do ecossistema Vue.js aplicados ao
 Desenvolvido por **João Pedro Danilaits Carvalho Brito** para a disciplina de **Web 2**.
 
 - **GitHub:** [@joaodanilaitsbrito](https://github.com/joaodanilaitsbrito)
-- **Repositório do Projeto:** [catalogo-vue](https://github.com/joaodanilaitsbrito/catalogo-vue)
+- **Repositório do Projeto:** [atividade_web2](https://github.com/joaodanilaitsbrito/atividade_web2)
